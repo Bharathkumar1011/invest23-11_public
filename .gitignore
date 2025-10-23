@@ -1,0 +1,51 @@
+# =============================
+# Node dependencies
+# =============================
+client/node_modules/
+server/node_modules/
+
+# =============================
+# Build outputs
+# =============================
+client/dist/
+server/dist/
+
+# =============================
+# Environment variables
+# =============================
+client/.env
+server/.env
+.env
+.env.local
+.env.development
+.env.production
+
+# =============================
+# Logs
+# =============================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =============================
+# Editor & OS files
+# =============================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# =============================
+# TypeScript build cache
+# =============================
+*.tsbuildinfo
+
+# =============================
+# Optional: dependency locks (if using CI-managed versions)
+# =============================
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
