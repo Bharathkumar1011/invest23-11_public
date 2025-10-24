@@ -150,48 +150,75 @@ export default function ChallengeReassignModal({
   // };
 
 // ...existing code...
-  // Reassignment mutation (call server reassign endpoint and surface error text)
+  // // Reassignment mutation (call server reassign endpoint and surface error text)
+  // const reassignmentMutation = useMutation({
+  //   mutationFn: async (data: { leadId: number; fromInternId: string; toInternId: string; notes?: string }) => {
+  //     const res = await fetch(`/api/leads/${data.leadId}/reassign-intern`, {
+  //       method: 'PATCH',
+  //       credentials: 'include',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({
+  //         fromInternId: data.fromInternId,
+  //         toInternId: data.toInternId,
+  //         notes: data.notes ?? '',
+  //       }),
+  //     });
+
+  //     const payload = await res.json().catch(() => ({}));
+  //     if (!res.ok) {
+  //       // prefer server error message if provided
+  //       const message = payload?.message || payload?.error || `HTTP ${res.status}`;
+  //       const err: any = new Error(message);
+  //       err.response = payload;
+  //       throw err;
+  //     }
+  //     return payload;
+  //   },
+  //   onSuccess: (data) => {
+  //     toast({
+  //       title: "Lead Reassigned",
+  //       description: "The lead has been successfully reassigned.",
+  //     });
+  //     queryClient.invalidateQueries({ queryKey: ['leads'], refetchType: 'active' });
+  //     handleOpenChange(false);
+  //   },
+  //   onError: (error: any) => {
+  //     console.error('Reassignment error:', error);
+  //     const serverMessage = error?.message || (error?.response && (error.response.message || error.response.error)) || 'Failed to reassign the lead. Please try again.';
+  //     toast({
+  //       title: "Reassignment Failed",
+  //       description: serverMessage,
+  //       variant: "destructive",
+  //     });
+  //   }
+  // });
+
   const reassignmentMutation = useMutation({
     mutationFn: async (data: { leadId: number; fromInternId: string; toInternId: string; notes?: string }) => {
       const res = await fetch(`/api/leads/${data.leadId}/reassign-intern`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fromInternId: data.fromInternId,
-          toInternId: data.toInternId,
-          notes: data.notes ?? '',
-        }),
+        body: JSON.stringify(data),
       });
 
-      const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        // prefer server error message if provided
-        const message = payload?.message || payload?.error || `HTTP ${res.status}`;
-        const err: any = new Error(message);
-        err.response = payload;
-        throw err;
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to reassign lead');
       }
-      return payload;
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Lead Reassigned",
-        description: "The lead has been successfully reassigned.",
-      });
-      queryClient.invalidateQueries({ queryKey: ['leads'], refetchType: 'active' });
-      handleOpenChange(false);
+
+      return res.json();
     },
     onError: (error: any) => {
-      console.error('Reassignment error:', error);
-      const serverMessage = error?.message || (error?.response && (error.response.message || error.response.error)) || 'Failed to reassign the lead. Please try again.';
-      toast({
-        title: "Reassignment Failed",
-        description: serverMessage,
-        variant: "destructive",
-      });
-    }
+      toast.error(error.message || 'Reassignment failed');
+    },
+    onSuccess: () => {
+      toast.success('Lead reassigned successfully');
+      queryClient.invalidateQueries(['leads']);
+    },
   });
+
+
 
   const handleReassign = () => {
     if (!lead || !selectedUserId || !currentAssignedUser?.id) return;

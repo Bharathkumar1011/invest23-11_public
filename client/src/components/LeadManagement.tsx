@@ -914,7 +914,7 @@ export default function LeadManagement({ stage, currentUser }: LeadManagementPro
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="All Sectors" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-gray-50">
                 <SelectItem value="all">All Sectors</SelectItem>
                 {uniqueSectors.map(sector => (
                   <SelectItem key={sector} value={sector}>{sector}</SelectItem>
@@ -928,7 +928,7 @@ export default function LeadManagement({ stage, currentUser }: LeadManagementPro
                 <Users className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="All Assignees" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-gray-50">
                 <SelectItem value="all">All Assignees</SelectItem>
                 <SelectItem value="unassigned">Unassigned</SelectItem>
                 {uniqueAssignees.map(assignee => (
@@ -947,7 +947,7 @@ export default function LeadManagement({ stage, currentUser }: LeadManagementPro
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="All Locations" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-gray-50">
                   <SelectItem value="all">All Locations</SelectItem>
                   {uniqueLocations.map(location => (
                     <SelectItem key={location} value={location}>{location}</SelectItem>
@@ -963,7 +963,7 @@ export default function LeadManagement({ stage, currentUser }: LeadManagementPro
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="All Stages" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-gray-50">
                   <SelectItem value="all">All Stages</SelectItem>
                   <SelectItem value="universe">Universe</SelectItem>
                   <SelectItem value="qualified">Qualified</SelectItem>
@@ -985,7 +985,7 @@ export default function LeadManagement({ stage, currentUser }: LeadManagementPro
                   <Users className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Channel Partners" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-gray-50">
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="with_channel_partner">With Channel Partner</SelectItem>
                   <SelectItem value="without_channel_partner">Without Channel Partner</SelectItem>
