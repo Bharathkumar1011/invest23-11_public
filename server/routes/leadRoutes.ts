@@ -6,26 +6,26 @@ import { validateIntParam, validateResourceExists, validateStage } from '../midd
 const router = Router();
 
 // Individual Lead Creation Route with Deduplication
-router.post('/individual', leadController.createIndividualLead);
+router.post('/individual', requireRole(['analyst', 'partner', 'admin']), leadController.createIndividualLead);
 
 // Bulk assign leads route
 router.post('/bulk-assign', requireRole(['partner', 'admin']), leadController.bulkAssignLeads);
 
 // Specific routes must come BEFORE generic :id route to avoid incorrect matching
-router.get('/all', leadController.getAllLeads);
-router.get('/my', leadController.getMyLeads);
-router.get('/stage/:stage', validateStage, leadController.getLeadsByStage);
+router.get('/all', requireRole(['analyst', 'partner', 'admin']), leadController.getAllLeads);
+router.get('/my', requireRole(['analyst', 'partner', 'admin']), leadController.getMyLeads);
+router.get('/stage/:stage', requireRole(['analyst', 'partner', 'admin']), validateStage, leadController.getLeadsByStage);
 router.get('/assigned', requireRole(['intern']), leadController.getAssignedLeads);
 router.get('/assigned/:userId', requireRole(['partner', 'admin']), leadController.getLeadsByAssignee);
 
 // Lead CRUD routes
-router.post('/', leadController.createLead);
-router.get('/:id', validateIntParam('id'), validateResourceExists('lead'), leadController.getLead);
+router.post('/', requireRole(['analyst', 'partner', 'admin']), leadController.createLead);
+router.get('/:id', requireRole(['analyst', 'partner', 'admin', 'intern']), validateIntParam('id'), validateResourceExists('lead'), leadController.getLead);
 router.put('/:id', requireRole(['partner', 'admin']), validateResourceExists('lead'), leadController.updateLead);
 
 // Lead stage management
-router.patch('/:id/stage', validateResourceExists('lead'), leadController.updateLeadStage);
-router.patch('/:id/reject', validateResourceExists('lead'), leadController.rejectLead);
+router.patch('/:id/stage', requireRole(['analyst', 'partner', 'admin']), validateResourceExists('lead'), leadController.updateLeadStage);
+router.patch('/:id/reject', requireRole(['analyst', 'partner', 'admin']), validateResourceExists('lead'), leadController.rejectLead);
 
 // Lead assignment routes
 router.post('/:id/assign', requireRole(['partner', 'admin']), validateResourceExists('lead'), leadController.assignLead);

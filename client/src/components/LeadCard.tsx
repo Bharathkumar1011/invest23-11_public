@@ -13,7 +13,6 @@ import {
   XCircle
 } from "lucide-react";
 import { useState } from "react";
-import ChallengeReassignModal from "./ChallengeReassignModal";
 import { RejectLeadDialog } from "./RejectLeadDialog";
 import type { Lead, Company, Contact, User as UserType } from "@/lib/types";
 
@@ -63,7 +62,6 @@ export default function LeadCard({
   onReject
 }: LeadCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   console.log("currentUserName", currentUser.firstName);
 
@@ -142,11 +140,10 @@ export default function LeadCard({
     onAssign?.(lead.id);
   };
 
-
   const handleReassignClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     console.log(`Opening reassign modal for: ${company.name}`);
-    setIsReassignModalOpen(true);
+    onReassign?.(lead.id);
   };
 
 
@@ -206,11 +203,17 @@ export default function LeadCard({
           
           {/* Assigned To - 2 columns (Universe) or 3 columns (other stages) */}
           <div className={stage === 'universe' ? 'col-span-2' : 'col-span-3'}>
-            {assignedInternUsers && assignedInternUsers.length > 0 ? (
+            {(assignedToUser || (assignedInternUsers && assignedInternUsers.length > 0)) ? (
               <div className="flex flex-col gap-1">
                 <div className="flex flex-wrap gap-1">
-                  {assignedToName}
-                  {assignedInternUsers.map((intern, index) => (
+                  {assignedToUser && (
+                    <Badge variant="secondary" className="text-xs">
+                      {assignedToUser.firstName && assignedToUser.lastName 
+                        ? `${assignedToUser.firstName} ${assignedToUser.lastName}` 
+                        : assignedToUser.email || 'Unknown'}
+                    </Badge>
+                  )}
+                  {assignedInternUsers && assignedInternUsers.map((intern, index) => (
                     <Badge key={intern?.id || index} variant="secondary" className="text-xs">
                       {intern?.firstName && intern?.lastName 
                         ? `${intern.firstName} ${intern.lastName}` 
@@ -431,10 +434,17 @@ export default function LeadCard({
           {/* Assigned To Row */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-muted-foreground">Assigned to:</span>
-            {assignedInternUsers && assignedInternUsers.length > 0 ? (
+            {(assignedToUser || (assignedInternUsers && assignedInternUsers.length > 0)) ? (
               <>
                 <div className="flex flex-wrap gap-1">
-                  {assignedInternUsers.map((intern, index) => (
+                  {assignedToUser && (
+                    <Badge variant="secondary" className="text-xs">
+                      {assignedToUser.firstName && assignedToUser.lastName 
+                        ? `${assignedToUser.firstName} ${assignedToUser.lastName}` 
+                        : assignedToUser.email || 'Unknown'}
+                    </Badge>
+                  )}
+                  {assignedInternUsers && assignedInternUsers.map((intern, index) => (
                     <Badge key={intern?.id || index} variant="secondary" className="text-xs">
                       {intern?.firstName && intern?.lastName 
                         ? `${intern.firstName} ${intern.lastName}` 
@@ -645,17 +655,6 @@ export default function LeadCard({
       )}
     </Card>
 
-
-    {/* Challenge Reassign Modal */}
-    <ChallengeReassignModal
-      lead={lead}
-      company={company}
-      currentAssignedUser={assignedToUser || null}
-      isOpen={isReassignModalOpen}
-      onClose={() => setIsReassignModalOpen(false)}
-      currentUser={currentUser}
-    />
-    
     {/* Reject Lead Dialog */}
     <RejectLeadDialog
       open={isRejectDialogOpen}

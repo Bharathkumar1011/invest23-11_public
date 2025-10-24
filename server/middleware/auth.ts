@@ -20,6 +20,8 @@ export const requireRole = (roles: string[]) => {
       const testRole = (req.session as any)?.testRole;
       let userRole = user.role || 'analyst';
       
+      console.log('[requireRole] User:', userId, 'DB Role:', user.role, 'Test Role:', testRole, 'Required:', roles);
+      
       // Security: Validate test role doesn't exceed actual role (prevent privilege escalation via session)
       if (testRole) {
         // Partners cannot use admin test role
@@ -41,8 +43,11 @@ export const requireRole = (roles: string[]) => {
       }
       
       if (!roles.includes(userRole)) {
+        console.log('[requireRole] DENIED - User role:', userRole, 'Required:', roles);
         return res.status(403).json({ message: 'Insufficient permissions' });
       }
+      
+      console.log('[requireRole] ALLOWED - User role:', userRole);
       
       // Add verified user and role to request for later use
       (req as any).verifiedUser = user;

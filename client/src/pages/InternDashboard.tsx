@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Building2, TrendingUp } from "lucide-react";
+import { Loader2, Building2, TrendingUp, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import POCManagement from "@/components/POCManagement";
+import { queryClient } from "@/lib/queryClient";
 import {
   Table,
   TableBody,
@@ -47,16 +50,54 @@ function getStageDisplay(stage: string): { label: string; className: string } {
 
 export default function InternDashboard() {
   const [, navigate] = useLocation();
+  const [showPOCManagement, setShowPOCManagement] = useState<{leadId: number; companyId: number; companyName: string} | null>(null);
 
   const { data: assignedLeads, isLoading } = useQuery<LeadWithDetails[]>({
     queryKey: ['/api/leads/assigned'],
+    queryFn: async () => {
+      console.log('[InternDashboard] Fetching assigned leads...');
+      const response = await fetch('/api/leads/assigned', {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('[InternDashboard] Received leads:', data);
+      return data;
+    },
   });
+
+  const handleCompanyClick = (lead: LeadWithDetails) => {
+    setShowPOCManagement({
+      leadId: lead.id,
+      companyId: lead.companyId,
+      companyName: lead.company.name
+    });
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
         <span className="ml-2">Loading assigned leads...</span>
+      </div>
+    );
+  }
+
+  if (showPOCManagement) {
+    return (
+      <div className="flex justify-center">
+        <POCManagement
+          companyId={showPOCManagement.companyId}
+          companyName={showPOCManagement.companyName}
+          startInEditMode={false}
+          onClose={() => setShowPOCManagement(null)}
+          onSave={() => {
+            queryClient.invalidateQueries({ queryKey: ['/api/leads/assigned'] });
+            setShowPOCManagement(null);
+          }}
+        />
       </div>
     );
   }
@@ -147,7 +188,14 @@ export default function InternDashboard() {
                     <TableRow key={lead.id} data-testid={`lead-row-${lead.id}`}>
                       <TableCell className="font-medium">
                         <div>
-                          <div>{lead.company.name}</div>
+                          <button
+                            onClick={() => handleCompanyClick(lead)}
+                            className="text-base font-semibold hover:underline focus:outline-none focus:underline text-foreground flex items-center gap-1"
+                            data-testid={`button-company-${lead.id}`}
+                          >
+                            {lead.company.name}
+                            <ExternalLink className="h-3 w-3" />
+                          </button>
                           <div className="text-xs text-muted-foreground">
                             {lead.company.sector}
                           </div>

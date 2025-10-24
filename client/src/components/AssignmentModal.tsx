@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +25,7 @@ import type { Lead, Company, User as UserType } from "@/lib/types";
 interface AssignmentModalProps {
   lead: Lead | null;
   company: Company | null;
+  currentAssignedInterns?: string[];
   isOpen: boolean;
   onClose: () => void;
   currentUser: UserType;
@@ -32,17 +33,22 @@ interface AssignmentModalProps {
 
 export default function AssignmentModal({ 
   lead, 
-  company, 
+  company,
+  currentAssignedInterns = [],
   isOpen, 
   onClose, 
   currentUser 
 }: AssignmentModalProps) {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [selectedInternIds, setSelectedInternIds] = useState<string[]>([]);
+  const [selectedInternIds, setSelectedInternIds] = useState<string[]>(currentAssignedInterns);
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const { toast } = useToast();
 
   const isAnalyst = currentUser.role === 'analyst';
   const isPartnerOrAdmin = ['partner', 'admin'].includes(currentUser.role);
+  
+  // Check if this is a reassignment
+  const isReassignment = isPartnerOrAdmin ? !!lead?.assignedTo : (currentAssignedInterns.length > 0);
 
   // Fetch users based on role
   // Analysts fetch their assigned interns from dedicated endpoint
@@ -70,28 +76,72 @@ export default function AssignmentModal({
   //   },
   // });
 
-      const { data: users = [], isLoading: isLoadingUsers } = useQuery<UserType[]>({
-      queryKey: ['/api/users'],
-      enabled: isOpen,
-      queryFn: async () => {
-        const response = await fetch('/api/users', {
-          credentials: 'include',
-          cache: 'no-cache',
-        });
+  const { data: users = [], isLoading: isLoadingUsers } = useQuery<UserType[]>({
+    queryKey: ['/api/users'],
+    enabled: isOpen,
+    queryFn: async () => {
+      const response = await fetch('/api/users', {
+        credentials: 'include',
+        cache: 'no-cache',
+      });
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
-        return await response.json();
-      },
-    });
+      const allUsers = await response.json();
+      
+      // Filter based on role
+      if (isAnalyst) {
+        // Analysts should only see interns assigned to them
+        return allUsers.filter((u: UserType) => 
+          u.role === 'intern' && u.analystId === currentUser.id
+        );
+      } else {
+        // Admins/Partners see all users
+        return allUsers;
+      }
+    },
+  });
 
+
+  // Generate challenge token for reassignments
+  const generateTokenMutation = useMutation({
+    mutationFn: async () => {
+      if (!lead) throw new Error('Lead is required');
+      const response = await apiRequest('POST', '/api/challenge-token/generate', {
+        leadId: lead.id,
+        purpose: 'reassignment'
+      });
+      return response.json();
+    },
+    onSuccess: (data: { token: string }) => {
+      setChallengeToken(data.token);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to generate security token",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Generate token when modal opens for reassignment
+  useEffect(() => {
+    if (isOpen && isReassignment && !challengeToken) {
+      generateTokenMutation.mutate();
+    }
+  }, [isOpen, isReassignment, challengeToken]);
 
   // Assignment mutation for Partners/Admins (to analysts)
   const assignmentMutation = useMutation({
-    mutationFn: async (data: { leadId: number; assignedTo: string | null }) => {
-      return apiRequest('POST', `/api/leads/${data.leadId}/assign`, { assignedTo: data.assignedTo });
+    mutationFn: async (data: { leadId: number; assignedTo: string | null; challengeToken?: string }) => {
+      return apiRequest('POST', `/api/leads/${data.leadId}/assign`, { 
+        assignedTo: data.assignedTo,
+        challengeToken: data.challengeToken,
+        notes: isReassignment ? 'Reassignment' : 'Initial assignment'
+      });
     },
     onSuccess: async () => {
       toast({
@@ -138,18 +188,30 @@ export default function AssignmentModal({
     if (!lead) return;
     
     if (isAnalyst) {
-      // Analyst assigning to interns
+      // Analyst assigning/reassigning interns
       if (selectedInternIds.length === 0) return;
       internAssignmentMutation.mutate({
         leadId: lead.id,
         internIds: selectedInternIds
       });
     } else {
-      // Partner/Admin assigning to analyst
+      // Partner/Admin assigning/reassigning analyst
       if (!selectedUserId) return;
+      
+      // For reassignment, need challenge token
+      if (isReassignment && !challengeToken) {
+        toast({
+          title: "Error",
+          description: "Security token not ready. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       assignmentMutation.mutate({
         leadId: lead.id,
-        assignedTo: selectedUserId
+        assignedTo: selectedUserId,
+        challengeToken: isReassignment ? challengeToken! : undefined
       });
     }
   };
@@ -157,10 +219,19 @@ export default function AssignmentModal({
   const handleUnassign = () => {
     if (!lead) return;
     
-    assignmentMutation.mutate({
-      leadId: lead.id,
-      assignedTo: null
-    });
+    if (isAnalyst) {
+      // Analyst unassigning interns
+      internAssignmentMutation.mutate({
+        leadId: lead.id,
+        internIds: []
+      });
+    } else {
+      // Partner/Admin unassigning analyst
+      assignmentMutation.mutate({
+        leadId: lead.id,
+        assignedTo: null
+      });
+    }
   };
 
   const toggleInternSelection = (internId: string) => {
@@ -200,13 +271,30 @@ export default function AssignmentModal({
             </div>
           </div>
 
-          {/* Current Assignment - Only show for non-analysts */}
+          {/* Current Assignment */}
           {!isAnalyst && lead.assignedTo && (
             <div className="p-3 border rounded-md">
               <h5 className="font-medium mb-1">Currently Assigned To:</h5>
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 <span className="text-sm">{lead.assignedTo}</span>
+              </div>
+            </div>
+          )}
+          {isAnalyst && currentAssignedInterns.length > 0 && (
+            <div className="p-3 border rounded-md">
+              <h5 className="font-medium mb-1">Currently Assigned Interns:</h5>
+              <div className="flex flex-wrap gap-1">
+                {currentAssignedInterns.map((internId) => {
+                  const intern = users.find(u => u.id === internId);
+                  return intern ? (
+                    <span key={internId} className="text-xs bg-secondary px-2 py-1 rounded">
+                      {intern.firstName && intern.lastName 
+                        ? `${intern.firstName} ${intern.lastName}` 
+                        : intern.email}
+                    </span>
+                  ) : null;
+                })}
               </div>
             </div>
           )}
@@ -222,7 +310,7 @@ export default function AssignmentModal({
                 <p className="text-sm text-muted-foreground">No interns assigned to you</p>
               ) : (
                 <div className="border rounded-md p-3 space-y-2 max-h-60 overflow-y-auto">
-                  {users.filter((ele)=>ele.role==='intern').map((intern) => (
+                  {users.map((intern) => (
                     <div 
                       key={intern.id} 
                       className="flex items-center gap-2 p-2 rounded hover-elevate"
@@ -283,16 +371,16 @@ export default function AssignmentModal({
           {/* Action Buttons */}
           <div className="flex justify-between pt-4">
             <div>
-              {!isAnalyst && lead.assignedTo && (
+              {(!isAnalyst && lead.assignedTo) || (isAnalyst && currentAssignedInterns.length > 0) ? (
                 <Button
                   variant="outline"
                   onClick={handleUnassign}
-                  disabled={assignmentMutation.isPending}
+                  disabled={assignmentMutation.isPending || internAssignmentMutation.isPending}
                   data-testid="button-unassign"
                 >
-                  Unassign
+                  Unassign All
                 </Button>
-              )}
+              ) : null}
             </div>
             <div className="flex gap-2">
               <Button

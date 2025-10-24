@@ -101,10 +101,20 @@ export const leadService = {
       throw new Error('User organization not found');
     }
 
+    console.log('[getAssignedLeads] Current user:', currentUser.id, currentUser.role);
     const allLeads = await storage.getAllLeads(currentUser.organizationId);
-    const assignedLeads = allLeads.filter(lead => 
-      lead.assignedInterns && lead.assignedInterns.includes(currentUser.id)
-    );
+    console.log('[getAssignedLeads] Total leads:', allLeads.length);
+    console.log('[getAssignedLeads] Sample lead assignedInterns:', allLeads[0]?.assignedInterns);
+    
+    const assignedLeads = allLeads.filter(lead => {
+      const isAssigned = lead.assignedInterns && Array.isArray(lead.assignedInterns) && lead.assignedInterns.includes(currentUser.id);
+      if (isAssigned) {
+        console.log('[getAssignedLeads] Found assigned lead:', lead.id, lead.assignedInterns);
+      }
+      return isAssigned;
+    });
+    
+    console.log('[getAssignedLeads] Assigned leads count:', assignedLeads.length);
 
     return assignedLeads.map(lead => ({
       ...lead,

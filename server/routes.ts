@@ -423,7 +423,7 @@ import { validateIntParam, validateResourceExists, validateStage } from "middlew
     // Protected routes with role-based access
     app.use('/api/users', authMiddleware, requireRole(['partner', 'admin', 'analyst']), userRoutes);
     app.use('/api/companies', authMiddleware, requireRole(['partner', 'admin']), companyRoutes);
-    app.use('/api/leads', authMiddleware, requireRole(['analyst', 'partner', 'admin']), leadRoutes);
+    app.use('/api/leads', authMiddleware, leadRoutes); // Role checks moved to individual routes
     app.use('/api/contacts', authMiddleware, contactRoutes);
     
     // Protected route example
