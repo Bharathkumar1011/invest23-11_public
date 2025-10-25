@@ -220,16 +220,26 @@ export default function AssignmentModal({
     if (!lead) return;
     
     if (isAnalyst) {
-      // Analyst unassigning interns
+      // Analyst unassigning interns - send empty array
       internAssignmentMutation.mutate({
         leadId: lead.id,
         internIds: []
       });
     } else {
-      // Partner/Admin unassigning analyst
+      // Partner/Admin unassigning analyst - send null with challenge token if needed
+      if (isReassignment && !challengeToken) {
+        toast({
+          title: "Error",
+          description: "Security token not ready. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       assignmentMutation.mutate({
         leadId: lead.id,
-        assignedTo: null
+        assignedTo: null,
+        challengeToken: isReassignment ? challengeToken! : undefined
       });
     }
   };

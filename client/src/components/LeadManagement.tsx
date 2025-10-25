@@ -1110,11 +1110,11 @@ export default function LeadManagement({ stage, currentUser }: LeadManagementPro
                   lead={leadData}
                   company={leadData.company}
                   contact={leadData.contact}
-                  assignedToName={leadData.assignedToUser ? 
+                  assignedToName={currentUser.role === 'analyst' ? undefined : (leadData.assignedToUser ? 
                     `${leadData.assignedToUser.firstName || ''} ${leadData.assignedToUser.lastName || ''}`.trim() :
-                    undefined
+                    undefined)
                   }
-                  assignedToUser={leadData.assignedToUser}
+                  assignedToUser={currentUser.role === 'analyst' ? undefined : leadData.assignedToUser}
                   assignedInternUsers={leadData.assignedInterns 
                     ? leadData.assignedInterns
                         .map((internId: string) => allInterns.find(i => i.id === internId))
